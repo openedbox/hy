@@ -52,8 +52,10 @@
             <a slot="title">{{ item.title }}</a>
           </a-list-item-meta>
           <div slot="actions" style="width:100px;">
-            <a-icon v-if="item.state==='CLOSE'" type="play-circle" theme='filled' style="font-size:20px;color:green"/>
-             <a-icon v-if="item.state==='OPEN'" type="stop" theme='filled' style="font-size:20px;color:red"/>
+            <a-icon v-if="item.state==='CLOSE' && !item.mode" type="play-circle" theme='filled' style="font-size:20px;color:green" @click="start()"/>
+             <a-icon v-if="item.state==='OPEN' && !item.mode" type="stop" theme='filled' style="font-size:20px;color:red" @click="stop()"/>
+              <a-switch checkedChildren="自动" unCheckedChildren="手动" :checked="item.mode" @change="autochange()"/>
+              <a-input v-if="item.mode" size="small" placeholder="温度阈值" v-model="limit" />
           </div>
          
           <div class="list-content">
@@ -102,7 +104,8 @@ consoleData.push({
   avatar: 'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1549862734931&di=294d24da6566bb08e65c11d157ea90cd&imgtype=0&src=http%3A%2F%2Fpic.51yuansu.com%2Fpic2%2Fcover%2F00%2F36%2F76%2F5811e4be92a43_610.jpg',
   description: '继电器控制马达，连接于GPIO-24',
   id: '57Da49',
-  state: 'CLOSE'
+  state: 'CLOSE',
+  mode:false
 })
 const chartData = {
             columns: ['时间', '度量'],
@@ -121,6 +124,7 @@ export default {
       consoleData,
       chartData,
       visible:false,
+      limit:50,
       idx:0
     }
   },
@@ -128,6 +132,15 @@ export default {
     'mqtt/sensor'  (data, topic) {
       let currentData = this.Uint8ArrayToFloat(data)
       this.setSensor(currentData)
+
+      if(this.consoleData[0].mode && currentData > this.limit) {
+          this.start()
+      }
+
+      if(this.consoleData[0].mode && currentData < this.limit) {
+          this.stop()
+      }
+
       if(this.visible) {
         chartData.rows.push({'时间':this.idx++,'度量':currentData})
       }
@@ -164,6 +177,20 @@ export default {
         return {
           color:'red'
         }
+      }
+    },
+    start() {
+      this.$mqtt.publish('pi-pan', 'start');
+      this.consoleData[0].state='OPEN'
+    },
+    stop(){
+      this.$mqtt.publish('pi-pan', 'stop');
+      this.consoleData[0].state='CLOSE'
+    },
+    autochange(){
+      this.consoleData[0].mode = !this.consoleData[0].mode;
+      if(this.consoleData[0].mode) {
+        this.stop();
       }
     },
     Uint8ArrayToFloat(fileData){
