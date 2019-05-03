@@ -2,7 +2,7 @@
   <a-layout id="components-layout-top" class="layout">
     <a-layout-header>
       <div class="logo">
-          IoT Demo 
+          魏宏宇 IoT 
       </div>
       <a-menu
         v-if="this.isDesktop()"
